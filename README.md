@@ -7,7 +7,7 @@
 
 ## Install
 
-* Clone the Vogle repo
+* Clone the Vogel repo
 * In the Vogel repo, pip install
     * `pip install -e .`
 
@@ -31,7 +31,7 @@
     
 ## Example
 
-Pandas in Pandas out pipelines. All metadata is carried to the transformed data.
+Pandas in Pandas out pipelines. All metadata is carried through to the transformed data.
 
 <pre>
 import numpy as np
@@ -86,7 +86,7 @@ display(train_X)
   <img src="/docs/artwork/bf_aftr_data.png" width="400" />
 </p>
 
-We can now run a few models on this transformed data. We will ignore the validation and hyperparamter tunning options for now.
+We can now run a few models on this transformed data. We will ignore the validation and hyperparameter tuning options for now.
 <pre>
 train_y = df['f'] 
 
@@ -145,7 +145,7 @@ display(eval_set)
   <img src="/docs/artwork/model_stats.png" width="800" />
 </p>
 
-With the stats package we can vizualize how our modes fit. We will chose the GLM, as it is the simpelest best fitting model.
+With the stats package we can visualize how our models fit. We will choose the GLM, as it is the simplest best fitting model.
 <pre>
 v_stats.plot_compare_stats(eval_set, valid_only=False)
 </pre>
@@ -154,7 +154,7 @@ v_stats.plot_compare_stats(eval_set, valid_only=False)
   <img src="/docs/artwork/plot_model_stats.png" width="800" />
 </p>
 
-We can see how indivitual features fit in out model.
+We can see how individual features fit in out model.
 <pre>
 mdl_glm = model_runner.models[0]
 print('b')
