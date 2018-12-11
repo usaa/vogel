@@ -23,7 +23,7 @@ def _droper(feature_names, drop, all_cols, features_to_transform):
     elif drop == 'non_trans':
         pass
     else:
-        raise('{} is not suppoertd as a drop type.'.foramt(drop))
+        raise ValueError('{} is not suppoertd as a drop type.'.format(drop))
 
     return feature_names
 
@@ -892,7 +892,7 @@ class InteractionGroups(TransformerMixin):
             "none": keep all features
             "non_trans" : Keep only the new transformed features
     """
-    def __init__(self, by, features=None, drop=False):
+    def __init__(self, by, features=None, drop='replace'):
         self.features_to_transform = []
         self.by = by
         self.features = features
@@ -911,14 +911,7 @@ class InteractionGroups(TransformerMixin):
         for inter_col in list(itertools.product(self.features, self.by)):
             self.feature_names.append('{0}__{1}'.format(inter_col[0], inter_col[1]))
             
-        if self.drop == 'none':
-            self.feature_names = list(X.columns) + self.feature_names 
-        elif self.drop == 'replace':
-            self.feature_names = [x for x in list(X.columns) if x not in self.by + self.features] + self.feature_names 
-        elif self.drop == 'non_trans':
-            pass
-        else:
-            raise('{} is not suppoertd as a drop type.'.foramt(self.drop))
+        self.feature_names = _droper(self.feature_names, self.drop, X.columns, self.features_to_transform)
         
         return self
     
