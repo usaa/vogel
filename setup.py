@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='vogel',
-      version='0.1',
+      version='0.2.5',
       author=['Robert Dohner', 'Michael Waldmeier', 'Chris Manhave'],
       url='https://github.com/usaa/',
       packages=['vogel', 'vogel.preprocessing', 'vogel.train', 'vogel.utils', 'vogel.utils.stats'],

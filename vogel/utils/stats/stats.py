@@ -17,9 +17,20 @@ import seaborn as sns
 import vogel.preprocessing as v_prep
 import vogel.utils as v_utils
 
+
+def _series2np(x):
+    if isinstance(x, pd.Series):
+        return x.values
+    else:
+        return x
+    
 ### Model Statistics
 
 def weighted_gini(weight, actual, predicted):
+    weight = _series2np(weight)
+    actual = _series2np(actual)
+    predicted = _series2np(predicted)
+    
     # Sort by predicted in descending order
     sort_index = np.argsort(predicted)[::-1]
     weight = weight[sort_index]
@@ -276,7 +287,9 @@ def plot_hl(weight,
             bins=10,
             phi=1.0,
             p=1.5,
-            plt_size=(10, 5)):
+            plt_size=(10, 5),
+            return_fig=False
+           ):
     """
     Hosmer-Lemshow Plot
     
@@ -296,6 +309,8 @@ def plot_hl(weight,
         float: tweedie power
     plt_size: (5.0, 5.0)
         tuple: (width, height)
+    return_fig: (False)
+        bool: return a fig instead of showing plt
     """
 
     plt.rcParams['figure.figsize'] = plt_size
@@ -309,8 +324,14 @@ def plot_hl(weight,
         lambda x: weighted_average(x['predicted'], x['weight'])).reset_index()
     hl_df_qrt_predicted.columns = ['quantile', 'predicted']
     hl_df_qrt = pd.merge(hl_df_qrt_actual, hl_df_qrt_predicted, on='quantile')
-    hl_df_qrt.plot(x='quantile')
-    plt.show()
+    
+    
+    
+    if return_fig:
+        return hl_df_qrt.plot(x='quantile').get_figure()
+    else:
+        hl_df_qrt.plot(x='quantile')
+        plt.show()
 
 
 def plot_recall(actual, prediction, plt_size=(7, 7)):
@@ -593,7 +614,9 @@ def plot_glm_one_way_fit(bin_fit_stats,
                          scale_to_zero=False,
                          base_line=True,
                          pad_bar_chart=True,
-                         plt_size=(10, 5)):
+                         plt_size=(10, 5),
+                         return_fig=False
+                        ):
     """
     one way feature fits for a GLM
 
@@ -615,6 +638,8 @@ def plot_glm_one_way_fit(bin_fit_stats,
         bool: add 100% padding to the top of x axis for the bar chart
     plt_size: (10, 5)
         tuple: (width, height)
+    return_fig: (False)
+        bool: return a fig instead of showing plt
     """
     plt.rcParams['figure.figsize'] = plt_size
 
@@ -679,7 +704,10 @@ def plot_glm_one_way_fit(bin_fit_stats,
     ax2.spines['right'].set_color('#006400')
     ax.spines['right'].set_color('#006400')
 
-    plt.show()
+    if return_fig:
+        return fig
+    else:
+        plt.show()
 
 ### END: One way GLM Plots ###
 
@@ -691,7 +719,9 @@ def plot_one_way_fit(feature,
                      target_error=False,
                      rotate_x=True,
                      pad_bar_chart=False,
-                     plt_size=(10, 5)):
+                     plt_size=(10, 5),
+                     return_fig=False
+                    ):
     """
     Create a bar & line plot to show a features relationship to the models outcome
     
@@ -717,6 +747,8 @@ def plot_one_way_fit(feature,
         bool: add 100% padding to the top of x axis for the bar chart
     plt_size: (10, 5)
         tuple: (width, height)
+    return_fig: (False)
+        bool: return a fig instead of showing plt
     """
     plt.rcParams['figure.figsize'] = plt_size
 
@@ -808,4 +840,8 @@ def plot_one_way_fit(feature,
         ax.set_ylim([0, temp['prediction_count'].max() * 2])
 
     ax2.legend()
-    plt.show()
+    
+    if return_fig:
+        return fig
+    else:
+        plt.show()

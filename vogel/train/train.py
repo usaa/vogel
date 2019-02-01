@@ -369,7 +369,33 @@ class V_SM_GLM(BaseModel):
                              scale_to_zero=False,
                              base_line=True,
                              pad_bar_chart=True,
-                             plt_size=(10, 5)):
+                             plt_size=(10, 5),
+                             return_fig_dict=False
+                            ):
+        
+        """
+        one way feature fits for a GLM
+
+        Args:
+        round_at: (2)
+            int: rounding point
+        predicted_value: (True)
+            bool: plot predicted value or liniear prodictor
+        rotate_x: (True)
+            bool: rotate x axis lables
+        scale_to_zero: (False)
+            bool: scale all valuse where the base is 0
+        base_line: (True)
+            bool: draw line at base level on y axis
+        pad_bar_chart: (False)
+            bool: add 100% padding to the top of x axis for the bar chart
+        plt_size: (10, 5)
+            tuple: (width, height)
+        return_fig_dict: (False)
+            bool: return a dict of figs instead of showing plt
+        """
+        
+        fig_dict = {}
 
         if self.feature_stats is None:
             self.create_feature_stats_table()
@@ -390,18 +416,32 @@ class V_SM_GLM(BaseModel):
                 data = mdl_stats_fltrd[[
                     'bin', 'count', 'coef_exp', 'error+', 'error-', 'hold'
                 ]]
+                if return_fig_dict:
+                    temp_fig = v_stats.plot_glm_one_way_fit(
+                        data,
+                        plot_error=plot_error,
+                        round_at=round_at,
+                        rotate_x=rotate_x,
+                        predicted_value=predicted_value,
+                        scale_to_zero=scale_to_zero,
+                        plt_size=plt_size,
+                        return_fig=True
+                    )
+                
+                    fig_dict[feature_name] = temp_fig
+                else:
+                    print(feature_name)
+                    v_stats.plot_glm_one_way_fit(
+                        data,
+                        plot_error=plot_error,
+                        round_at=round_at,
+                        rotate_x=rotate_x,
+                        predicted_value=predicted_value,
+                        scale_to_zero=scale_to_zero,
+                        plt_size=plt_size
+                )
 
-                print(feature_name)
-                v_stats.plot_glm_one_way_fit(
-                    data,
-                    plot_error=plot_error,
-                    round_at=round_at,
-                    rotate_x=rotate_x,
-                    predicted_value=predicted_value,
-                    scale_to_zero=scale_to_zero,
-                    plt_size=plt_size)
-
-            if features is None:
-                plot_it()
-            elif feature_name in features:
-                plot_it()
+            plot_it()
+    
+        if return_fig_dict:
+            return fig_dict

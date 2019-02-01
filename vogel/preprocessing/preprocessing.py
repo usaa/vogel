@@ -428,7 +428,7 @@ class Binning(TransformerMixin):
             "stand": standard bin count id
             , "mean": mean of bin
             , "wavg": weighted avg using defined weight feature
-            
+            , "min": min of bin            
         duplicates: ('drop')
             "drop": ignore dups
             "raise": If bin edges are not unique, raise ValueError or drop non-uniques.
@@ -561,6 +561,8 @@ class Binning(TransformerMixin):
                     temp_mean = Y[[col, 'temp', 'weight']].groupby('temp').apply(lambda x: weighted_average(x[col],x['weight']))
                 elif self.bin_id == 'median':
                     temp_mean = Y[[col, 'temp']].groupby('temp').median().fillna(0).iloc[:,0]
+                elif self.bin_id == 'min':
+                    temp_mean = Y[[col, 'temp']].groupby('temp').min().fillna(0).iloc[:,0]
                 else:
                     raise('Unkown bin_id type!')
 
@@ -650,8 +652,8 @@ class LogTransform(TransformerMixin):
     feature names to a customized FeatureUnion transformer.
     
     Arrgs:
-        levels: (2)
-            int: number of interactions
+        pre_add: (2)
+            float: number to add before log transform
         fill_0: (False)
             bool: add 1 to features before log transform
         drop: ("replace") 
@@ -659,9 +661,9 @@ class LogTransform(TransformerMixin):
             "none": keep all features
             "non_trans" : Keep only the new transformed features
     """
-    def __init__(self, levels=2, fill_0=False, drop='replace', feature_filter=None):
+    def __init__(self, pre_add=0, fill_0=False, drop='replace', feature_filter=None):
         self.features_to_transform = []
-        self.levels = levels
+        self.pre_add = pre_add
         self.fill_0 = fill_0
         self.drop = drop
         self.feature_names = []
@@ -688,16 +690,19 @@ class LogTransform(TransformerMixin):
 
         for col in self.features_to_transform:
             new_col = '{0}__{1}'.format(col, 'ln')
+            
+            X[new_col] = X[col] + self.pre_add
+            
             if self.fill_0:
                 X[new_col] = pd.to_numeric(np.where(
-                    X[col] < 0
+                    X[new_col] < 0
                     , 0
-                    , X[col]
+                    , X[new_col]
                 ))
-                X[new_col] = np.log(X[col]).fillna(0)
+                X[new_col] = np.log(X[new_col]).fillna(0)
                 X[new_col][X[new_col] == -math.inf] = 0
             else:
-                X[new_col] = np.log(X[col])
+                X[new_col] = np.log(X[new_col])
 
         return X[self.feature_names]
     
