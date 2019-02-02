@@ -232,6 +232,17 @@ class BaseModel():
                 {'y' : self.train_set['y'], 'pred' : train_pred, 'w' : self.train_set['w']},
                 None,
                 p)
+        elif self.target_type == 'bool':
+            if self.valid_set is not None:
+                model_stats = v_stats.model_stats_bool(
+                    {'y' : self.train_set['y'], 'pred' : train_pred, 'w' : self.train_set['w']},
+                    {'y' : self.valid_set['y'], 'pred' : valid_pred, 'w' : self.valid_set['w']}
+                )
+            else:
+                model_stats = v_stats.model_stats_bool(
+                    {'y' : self.train_set['y'], 'pred' : train_pred, 'w' : self.train_set['w']},
+                    None
+                )
         else:
             raise ValueError('Target type {} not supported'.format(
                 self.target_type))

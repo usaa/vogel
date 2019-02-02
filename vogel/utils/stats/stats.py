@@ -1,25 +1,26 @@
-import pandas as pd
-import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, precision_recall_curve, average_precision_score
+import pandas as _pd
+import numpy as _np
+from sklearn import metrics as _metrics
+import scipy.stats as _st
 
-import scipy.stats as st
+import statsmodels.api as _sm
 
-import statsmodels.api as sm
 ## This is a temp fix for statsmodes setting breaking pickling ##
 ## https://github.com/statsmodels/statsmodels/issues/4772 ##
-import types, pickle
-if types.MethodType in pickle.dispatch_table.keys():
-    del pickle.dispatch_table[types.MethodType]
+import types as _types
+import pickle as _pickle
+if _types.MethodType in _pickle.dispatch_table.keys():
+    del _pickle.dispatch_table[_types.MethodType]
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib.pyplot as _plt
+import seaborn as _sns
 
-import vogel.preprocessing as v_prep
-import vogel.utils as v_utils
+import vogel.preprocessing as _v_prep
+import vogel.utils as _v_utils
 
 
 def _series2np(x):
-    if isinstance(x, pd.Series):
+    if isinstance(x, _pd.Series):
         return x.values
     else:
         return x
@@ -32,12 +33,12 @@ def weighted_gini(weight, actual, predicted):
     predicted = _series2np(predicted)
     
     # Sort by predicted in descending order
-    sort_index = np.argsort(predicted)[::-1]
+    sort_index = _np.argsort(predicted)[::-1]
     weight = weight[sort_index]
     actual = actual[sort_index]
     # Cumulative sums
-    cumulative_weight = np.cumsum(weight)
-    cumulative_actual = np.cumsum(weight * actual)
+    cumulative_weight = _np.cumsum(weight)
+    cumulative_actual = _np.cumsum(weight * actual)
     # Calculate products
     sum_a = sum(cumulative_weight[1:] * cumulative_actual[:-1])
     sum_b = sum(cumulative_weight[:-1] * cumulative_actual[1:])
@@ -47,8 +48,8 @@ def weighted_gini(weight, actual, predicted):
 
 
 def weighted_rmse(weight, actual, predicted):
-    return np.sqrt(
-        np.sum(weight * np.power(actual - predicted, 2)) / np.sum(weight))
+    return _np.sqrt(
+        _np.sum(weight * _np.power(actual - predicted, 2)) / _np.sum(weight))
 
 
 def pearson_chi_sq_scale_estimate(actual,
@@ -60,14 +61,14 @@ def pearson_chi_sq_scale_estimate(actual,
     predicted_temp[predicted_temp <= 0] = .0000001
 
     n = len(actual)
-    se = np.power(actual - predicted_temp, 2)  # square error
-    v = np.power(predicted_temp, tweedie_power)  # variance function
-    return 1 / (n - p) * np.sum(weight * se / v)
+    se = _np.power(actual - predicted_temp, 2)  # square error
+    v = _np.power(predicted_temp, tweedie_power)  # variance function
+    return 1 / (n - p) * _np.sum(weight * se / v)
 
 
 def weighted_average(x, w):
     "Returns the weighted average"
-    return np.sum(x * w) / np.sum(w)
+    return _np.sum(x * w) / _np.sum(w)
 
 
 def chi_sq_tweedie(phi, p):
@@ -75,13 +76,13 @@ def chi_sq_tweedie(phi, p):
 
     def weighted_average(x, w):
         "Returns the weighted average"
-        return np.sum(x * w) / np.sum(w)
+        return _np.sum(x * w) / _np.sum(w)
 
     def inner(grp):
         wavg_actual = weighted_average(grp.actual, grp.weight)
         wavg_predicted = weighted_average(grp.predicted, grp.weight)
-        return np.power(wavg_actual - wavg_predicted, 2) / (
-            (phi * np.power(wavg_predicted, p)) / np.sum(grp.weight))
+        return _np.power(wavg_actual - wavg_predicted, 2) / (
+            (phi * _np.power(wavg_predicted, p)) / _np.sum(grp.weight))
 
     return inner
 
@@ -91,14 +92,14 @@ def hl_tweedie_df(weight, actual, predicted, bins=10, phi=1.0, p=1.5):
     predicted_temp = predicted.copy()
     predicted_temp[predicted_temp <= 0] = .0000001
 
-    qs = sm.stats.DescrStatsW(
-        predicted, weights=weight).quantile(np.arange(1, bins) * 1 / bins)
-    quantile = np.searchsorted(qs, predicted)
-    df = pd.DataFrame({
-        'weight': np.array(weight),
-        'actual': np.array(actual),
-        'predicted': np.array(predicted_temp),
-        'quantile': np.array(quantile)
+    qs = _sm.stats.DescrStatsW(
+        predicted, weights=weight).quantile(_np.arange(1, bins) * 1 / bins)
+    quantile = _np.searchsorted(qs, predicted)
+    df = _pd.DataFrame({
+        'weight': _np.array(weight),
+        'actual': _np.array(actual),
+        'predicted': _np.array(predicted_temp),
+        'quantile': _np.array(quantile)
     })
     return df
 
@@ -111,7 +112,7 @@ def hl_tweedie(weight, actual, predicted, bins=10, phi=1.0, p=1.5):
 def deviance_tweedie(actual, predicted, weight, p=1.5):
     predicted_temp = predicted.copy()
     predicted_temp[predicted_temp <= 0] = .0000001
-    tweedie = sm.families.Tweedie(var_power=p)
+    tweedie = _sm.families.Tweedie(var_power=p)
     return tweedie.deviance(actual, predicted_temp, freq_weights=weight)
 
 
@@ -133,49 +134,49 @@ def model_stats_reg(
     has_weight = False
     if 'w' not in train_set:
         has_weight = True
-        train_set['w'] = np.ones(len(train_set['y']))
+        train_set['w'] = _np.ones(len(train_set['y']))
         if valid_set is not None:
-            train_set['w'] = np.ones(len(valid_set['y']))
+            train_set['w'] = _np.ones(len(valid_set['y']))
 
     try:
         # The mean squared error
         out_dict['train']['rmse'] = [
-            np.sqrt(mean_squared_error(train_set['y'], train_set['pred']))
+            _np.sqrt(_metrics.mean_squared_error(train_set['y'], train_set['pred']))
         ]
         
 
         # The mean squared error
-        out_dict['train']['mae'] = [mean_absolute_error(train_set['y'], train_set['pred'])]
+        out_dict['train']['mae'] = [_metrics.mean_absolute_error(train_set['y'], train_set['pred'])]
 
         # Explained variance score: 1 is perfect prediction
-        #     out_dict['train']['r2'] = [r2_score(train_y, train_pred)]
+        #     out_dict['train']['r2'] = [_metrics.r2_score(train_y, train_pred)]
         
 
         # Gini
         out_dict['train']['gini'] = [
-            weighted_gini(np.array(train_set['w']), np.array(train_set['y']), train_set['pred'])
+            weighted_gini(_np.array(train_set['w']), _np.array(train_set['y']), train_set['pred'])
         ]
         
 
         # weighted_rmse
         if has_weight:
             out_dict['train']['weighted_rmse'] = [
-                weighted_rmse(np.array(train_set['w']), np.array(train_set['y']), train_set['pred'])
+                weighted_rmse(_np.array(train_set['w']), _np.array(train_set['y']), train_set['pred'])
             ]
         
 
         if valid_set is not None:
             out_dict['valid']['rmse'] = [
-                np.sqrt(mean_squared_error(valid_set['y'], valid_set['pred']))
+                _np.sqrt(_metrics.mean_squared_error(valid_set['y'], valid_set['pred']))
             ]
-            out_dict['valid']['mae'] = [mean_absolute_error(valid_set['y'], valid_set['pred'])]
+            out_dict['valid']['mae'] = [_metrics.mean_absolute_error(valid_set['y'], valid_set['pred'])]
             out_dict['valid']['gini'] = [
-                weighted_gini(np.array(valid_set['w']), np.array(valid_set['y']), valid_set['pred'])
+                weighted_gini(_np.array(valid_set['w']), _np.array(valid_set['y']), valid_set['pred'])
             ]
             out_dict['valid']['weighted_rmse'] = [
-                weighted_rmse(np.array(valid_set['w']), np.array(valid_set['y']), valid_set['pred'])
+                weighted_rmse(_np.array(valid_set['w']), _np.array(valid_set['y']), valid_set['pred'])
             ]
-            #     out_dict['valid']['r2'] = [r2_score(valid_y, valid_pred)]
+            #     out_dict['valid']['r2'] = [_metrics.r2_score(valid_y, valid_pred)]
 
     except Exception as e:
         print('Stats Failed to run')
@@ -206,9 +207,9 @@ def model_stats_tweedie(train_set,
         valid_set
         )
     if 'w' not in train_set:
-        train_set['w'] = np.ones(len(train_set['y']))
+        train_set['w'] = _np.ones(len(train_set['y']))
         if valid_set is not None:
-            train_set['w'] = np.ones(len(valid_set['y']))
+            train_set['w'] = _np.ones(len(valid_set['y']))
 
     # Tweedie Deviance
     out_dict['train']['tweedie_deviance'] = [
@@ -235,6 +236,81 @@ def model_stats_tweedie(train_set,
 
     return out_dict
 
+def model_stats_bool(
+        train_set,
+        valid_set
+    ):
+    """
+    Returns common metrics for a binomial (boollean target) model.
+    
+    Arrgs:
+    
+    train_set:
+        dict: {'y' : list, 'pred' : list, 'w' : list}
+    valid_set:
+        dict: {'y' : list, 'pred' : list, 'w' : list}
+    """
+    out_dict = {'train': {}, 'valid': {}}
+    has_weight = False
+    if 'w' not in train_set:
+        has_weight = True
+        train_set['w'] = _np.ones(len(train_set['y']))
+        if valid_set is not None:
+            train_set['w'] = _np.ones(len(valid_set['y']))
+
+    try:
+        pred_class = _np.where(train_set['pred']>.5, 1, 0)
+        
+        # F1 Score
+        out_dict['train']['f1_score'] = [
+            _metrics.f1_score(train_set['y'], pred_class, sample_weight=train_set['w'])
+        ]
+        
+        # Accuracy
+        out_dict['train']['accuracy'] = [
+            _metrics.accuracy_score(train_set['y'], pred_class, sample_weight=train_set['w'])
+        ]
+        
+        # Precision
+        out_dict['train']['precision'] = [
+            _metrics.precision_score(train_set['y'], pred_class, sample_weight=train_set['w'])
+        ]
+        
+        # Recall
+        out_dict['train']['recall'] = [
+            _metrics.precision_score(train_set['y'], pred_class, sample_weight=train_set['w'])
+        ]
+        
+        # ROC AUC
+        out_dict['train']['roc_acu'] = [
+            _metrics.roc_auc_score(train_set['y'], train_set['pred'], sample_weight=train_set['w'])
+        ]
+
+        if valid_set is not None:
+            
+            pred_class = _np.where(valid_set['pred']>.5, 1, 0)
+  
+            out_dict['valid']['f1_score'] = [
+                _metrics.f1_score(valid_set['y'], pred_class, sample_weight=valid_set['w'])
+            ]
+            out_dict['valid']['accuracy'] = [
+                _metrics.accuracy_score(valid_set['y'], pred_class, sample_weight=valid_set['w'])
+            ]
+            out_dict['valid']['precision'] = [
+                _metrics.precision_score(valid_set['y'], pred_class, sample_weight=valid_set['w'])
+            ]
+            out_dict['valid']['recall'] = [
+                _metrics.precision_score(valid_set['y'], pred_class, sample_weight=valid_set['w'])
+            ]
+            out_dict['valid']['roc_acu'] = [
+                _metrics.roc_auc_score(valid_set['y'], valid_set['pred'], sample_weight=valid_set['w'])
+            ]
+
+    except Exception as e:
+        print('Stats Failed to run')
+        print(e)
+
+    return out_dict
 
 ### Model Plots ###
 
@@ -252,33 +328,33 @@ def plot_xgb_fit(results, error='rmse', plt_size=(5.0, 5.0)):
     plt_size: (5.0, 5.0)
         tuple: (width, height)
     """
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
 
     epochs = len(results['validation_0'][error])
     x_axis = range(0, epochs)
     # plot log loss
-    fig, ax = plt.subplots()
+    fig, ax = _plt.subplots()
     ax.plot(x_axis, results['validation_0'][error], label='Train')
     if 'validation_1' in results:
         ax.plot(x_axis, results['validation_1'][error], label='Valid')
     ax.legend()
-    plt.ylabel(error)
-    plt.title('XGBoost Loss')
-    plt.show()
+    _plt.ylabel(error)
+    _plt.title('XGBoost Loss')
+    _plt.show()
 
-    fig, ax = plt.subplots()
+    fig, ax = _plt.subplots()
     ax.plot(x_axis, results['validation_0'][error], label='Train')
     ax.legend()
-    plt.ylabel(error)
-    plt.title('XGBoost Loss')
-    plt.show()
+    _plt.ylabel(error)
+    _plt.title('XGBoost Loss')
+    _plt.show()
     if 'validation_1' in results:
-        fig, ax = plt.subplots()
+        fig, ax = _plt.subplots()
         ax.plot(x_axis, results['validation_1'][error], label='Valid')
         ax.legend()
-        plt.ylabel(error)
-        plt.title('XGBoost Loss')
-        plt.show()
+        _plt.ylabel(error)
+        _plt.title('XGBoost Loss')
+        _plt.show()
 
 
 def plot_hl(weight,
@@ -313,17 +389,17 @@ def plot_hl(weight,
         bool: return a fig instead of showing plt
     """
 
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
 
     hl_df = hl_tweedie_df(weight, actual, predicted, bins, phi, p)
-    hl_df = hl_df.apply(pd.to_numeric)
+    hl_df = hl_df.apply(_pd.to_numeric)
     hl_df_qrt_actual = hl_df.groupby('quantile').apply(
         lambda x: weighted_average(x['actual'], x['weight'])).reset_index()
     hl_df_qrt_actual.columns = ['quantile', 'actual']
     hl_df_qrt_predicted = hl_df.groupby('quantile').apply(
         lambda x: weighted_average(x['predicted'], x['weight'])).reset_index()
     hl_df_qrt_predicted.columns = ['quantile', 'predicted']
-    hl_df_qrt = pd.merge(hl_df_qrt_actual, hl_df_qrt_predicted, on='quantile')
+    hl_df_qrt = _pd.merge(hl_df_qrt_actual, hl_df_qrt_predicted, on='quantile')
     
     
     
@@ -331,7 +407,7 @@ def plot_hl(weight,
         return hl_df_qrt.plot(x='quantile').get_figure()
     else:
         hl_df_qrt.plot(x='quantile')
-        plt.show()
+        _plt.show()
 
 
 def plot_recall(actual, prediction, plt_size=(7, 7)):
@@ -347,23 +423,23 @@ def plot_recall(actual, prediction, plt_size=(7, 7)):
     plt_size: (7.0, 7.0)
         tuple: (width, height)
     """
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
 
-    average_precision = average_precision_score(actual, prediction)
+    average_precision = _metrics.average_precision_score(actual, prediction)
 
-    precision, recall, _ = precision_recall_curve(actual, prediction)
+    precision, recall, _ = _metrics.precision_recall_curve(actual, prediction)
 
-    plt.step(recall, precision, color='b', alpha=0.2, where='post')
-    plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
+    _plt.step(recall, precision, color='b', alpha=0.2, where='post')
+    _plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
 
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0.0, 1.05])
-    plt.xlim([0.0, 1.0])
-    plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(
+    _plt.xlabel('Recall')
+    _plt.ylabel('Precision')
+    _plt.ylim([0.0, 1.05])
+    _plt.xlim([0.0, 1.0])
+    _plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(
         average_precision))
 
-    plt.show()
+    _plt.show()
 
 
 def plot_compare_stats(metrics_summary, valid_only=True, plt_size=(10, 5)):
@@ -379,26 +455,26 @@ def plot_compare_stats(metrics_summary, valid_only=True, plt_size=(10, 5)):
     plt_size: (10.0, 5.0)
         tuple: (width, height)
     """
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
     non_metrics = ['model_name', 'model_dict', 'set']
-    metrics = np.setdiff1d(metrics_summary.columns, non_metrics).tolist()
+    metrics = _np.setdiff1d(metrics_summary.columns, non_metrics).tolist()
 
     if valid_only:
         metrics_summary = metrics_summary[metrics_summary['set'] == 'valid']
 
-    pipeline = v_prep.FeatureUnion([
+    pipeline = _v_prep.FeatureUnion([
         ('numeric',
-         v_utils.make_pipeline(
-             v_prep.ColumnExtractor(None, None, want_numeric=True),
-             v_prep.MinMaxScaler())),
+         _v_utils.make_pipeline(
+             _v_prep.ColumnExtractor(None, None, want_numeric=True),
+             _v_prep.MinMaxScaler())),
         ('cats',
-         v_utils.make_pipeline(
-             v_prep.ColumnExtractor(None, None, want_numeric=False))),
+         _v_utils.make_pipeline(
+             _v_prep.ColumnExtractor(None, None, want_numeric=False))),
     ])
 
     metrics_summary = pipeline.fit_transform(metrics_summary)
 
-    fig, ax = plt.subplots()
+    fig, ax = _plt.subplots()
     for metric in metrics:
         ax.plot(
             metrics_summary['model_name'],
@@ -406,8 +482,8 @@ def plot_compare_stats(metrics_summary, valid_only=True, plt_size=(10, 5)):
             label=metric)
     ax.legend()
 
-    plt.xticks(rotation=90)
-    plt.show()
+    _plt.xticks(rotation=90)
+    _plt.show()
 
 
 def plot_pareto(y,
@@ -433,9 +509,9 @@ def plot_pareto(y,
         tuple: (width, height)
     """
 
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
 
-    temp_df = pd.DataFrame({'data': y})
+    temp_df = _pd.DataFrame({'data': y})
     # temp_df.index = temp_index
     temp_df['label'] = x
 
@@ -450,19 +526,19 @@ def plot_pareto(y,
 
     max_per = temp_df['per_ttl'][temp_df['per_ttl'] < cutoff].max()
 
-    fig, ax = plt.subplots()
+    fig, ax = _plt.subplots()
     ax2 = ax.twinx()
 
     ax.bar(temp_df['label'], temp_df['data'])
     ax2.plot(list(temp_df['label']), temp_df['per_ttl'], ls='--', c='red')
     #     ax2.axhline(.95, ls='--', c='red')
-    plt.axvline(
+    _plt.axvline(
         temp_df['label'][temp_df['per_ttl'] == max_per].values[0],
         ls='--',
         c='red')
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
+    _plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
 
-    plt.show()
+    _plt.show()
 
 
 ### One way GLM Plots ###
@@ -484,16 +560,16 @@ def get_glm_label_and_count_table(label_dicts, data):
     data: 
         list: feature data
     """
-    out_df = pd.DataFrame()
+    out_df = _pd.DataFrame()
 
     def get_label_counts(bins_df, feature, data):
-        temp = pd.DataFrame(data[list(
+        temp = _pd.DataFrame(data[list(
             bins_df.index[bins_df['hold'] != 1])].sum())
         temp.columns = ['count']
         #cal holdout count
-        temp = pd.concat([
+        temp = _pd.concat([
             temp,
-            pd.DataFrame(
+            _pd.DataFrame(
                 {
                     'count': [len(data) - temp['count'].sum()]
                 },
@@ -506,28 +582,28 @@ def get_glm_label_and_count_table(label_dicts, data):
         feature_name = feature_set[0]
         feature_dict = feature_set[1]
         items = feature_dict['items']
-        bins_df = pd.concat([
-            pd.DataFrame({
+        bins_df = _pd.concat([
+            _pd.DataFrame({
                 'bin': items,
-                'hold': np.zeros(len(items)),
+                'hold': _np.zeros(len(items)),
                 'sep' : feature_dict['sep']
             }),
-            pd.DataFrame({
+            _pd.DataFrame({
                 'bin': [str(feature_dict['hold'])],
                 'hold': [1],
                 'sep' : feature_dict['sep']
             })
         ])
 
-        bins_df.index = bins_df.apply(lambda x: v_utils.label_dict_formater(
+        bins_df.index = bins_df.apply(lambda x: _v_utils.label_dict_formater(
                                                  x['sep'], 
                                                  feature_name, 
                                                  str(x['bin'])), axis=1)
-        bins_df.index = np.where(bins_df['hold'] == 1, feature_name + '___const', bins_df.index)
+        bins_df.index = _np.where(bins_df['hold'] == 1, feature_name + '___const', bins_df.index)
 
-        bins_df = pd.concat(
+        bins_df = _pd.concat(
             [bins_df, get_label_counts(bins_df, feature_name, data)], axis=1)
-        out_df = pd.concat([out_df, bins_df])
+        out_df = _pd.concat([out_df, bins_df])
 
     out_df['bin'] = out_df['bin'].astype('str')
     return out_df
@@ -544,7 +620,7 @@ def get_glm_error(mdl_stats, label_dicts):
     label_dicts:
         dict: dict from utils.py get_label_dicts()
     """
-    out_df = pd.DataFrame()
+    out_df = _pd.DataFrame()
 
     base_coef = mdl_stats['Coef.'][mdl_stats.index == 'const'].values[0]
     base_std = mdl_stats['Std.Err.'][mdl_stats.index == 'const'].values[0]
@@ -552,12 +628,12 @@ def get_glm_error(mdl_stats, label_dicts):
 
     def calc_err(row, err_type):
         coefs = base_coef + row['Coef.']
-        err_term = 2 * np.sqrt(base_std**2 + row['Std.Err.']**2 +
+        err_term = 2 * _np.sqrt(base_std**2 + row['Std.Err.']**2 +
                                2 * row['cov'])
         if err_type == 'pos':
-            return np.exp(coefs + err_term)
+            return _np.exp(coefs + err_term)
         elif err_type == 'neg':
-            return np.exp(coefs - err_term)
+            return _np.exp(coefs - err_term)
 
     for feature_set in label_dicts.items():
         feature_name = feature_set[0]
@@ -574,13 +650,13 @@ def get_glm_error(mdl_stats, label_dicts):
         mdl_stats_fltrd = mdl_stats[mdl_stats.index.isin(mod_features)].copy()
 
         #set stats for base level
-        mdl_stats_fltrd['Coef.'] = np.where(
+        mdl_stats_fltrd['Coef.'] = _np.where(
             mdl_stats_fltrd.index == feature_name + '___const', 0,
             mdl_stats_fltrd['Coef.'])
-        mdl_stats_fltrd['Std.Err.'] = np.where(
+        mdl_stats_fltrd['Std.Err.'] = _np.where(
             mdl_stats_fltrd.index == feature_name + '___const', base_std,
             mdl_stats_fltrd['Std.Err.'])
-        mdl_stats_fltrd['cov'] = np.where(
+        mdl_stats_fltrd['cov'] = _np.where(
             mdl_stats_fltrd.index == feature_name + '___const', base_std,
             mdl_stats_fltrd['cov'])
 
@@ -591,17 +667,17 @@ def get_glm_error(mdl_stats, label_dicts):
             lambda x: calc_err(x, 'neg'), axis=1)
 
         #set error for base level
-        mdl_stats_fltrd['error+'] = np.where(
+        mdl_stats_fltrd['error+'] = _np.where(
             mdl_stats_fltrd.index == feature_name + '___const',
-            np.exp(base_coef + base_std * 2), mdl_stats_fltrd['error+'])
-        mdl_stats_fltrd['error-'] = np.where(
+            _np.exp(base_coef + base_std * 2), mdl_stats_fltrd['error+'])
+        mdl_stats_fltrd['error-'] = _np.where(
             mdl_stats_fltrd.index == feature_name + '___const',
-            np.exp(base_coef - base_std * 2), mdl_stats_fltrd['error-'])
+            _np.exp(base_coef - base_std * 2), mdl_stats_fltrd['error-'])
 
-        mdl_stats_fltrd['coef_exp'] = np.exp(mdl_stats_fltrd['Coef.'] +
+        mdl_stats_fltrd['coef_exp'] = _np.exp(mdl_stats_fltrd['Coef.'] +
                                              base_coef)
 
-        out_df = pd.concat([out_df, mdl_stats_fltrd])
+        out_df = _pd.concat([out_df, mdl_stats_fltrd])
 
     return out_df
 
@@ -641,7 +717,7 @@ def plot_glm_one_way_fit(bin_fit_stats,
     return_fig: (False)
         bool: return a fig instead of showing plt
     """
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
 
     def is_number(s):
         try:
@@ -660,9 +736,9 @@ def plot_glm_one_way_fit(bin_fit_stats,
         temp_df = temp_df.sort_values('count', ascending=False)
 
     if not predicted_value:
-        temp_df['coef_exp'] = np.log(temp_df['coef_exp'])
-        temp_df['error+'] = np.log(temp_df['error+'])
-        temp_df['error-'] = np.log(temp_df['error-'])
+        temp_df['coef_exp'] = _np.log(temp_df['coef_exp'])
+        temp_df['error+'] = _np.log(temp_df['error+'])
+        temp_df['error-'] = _np.log(temp_df['error-'])
 
     if scale_to_zero:
         base_coef = temp_df['coef_exp'][temp_df['hold'] == 1].values[0]
@@ -672,7 +748,7 @@ def plot_glm_one_way_fit(bin_fit_stats,
 
     index = temp_df['bin']
 
-    fig, ax = plt.subplots()
+    fig, ax = _plt.subplots()
     ax2 = ax.twinx()
 
     ax.bar(
@@ -689,10 +765,10 @@ def plot_glm_one_way_fit(bin_fit_stats,
             color='green')
 
     if rotate_x:
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
+        _plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
 
     if base_line:
-        plt.axhline(
+        _plt.axhline(
             temp_df['coef_exp'][temp_df['hold'] == 1].values[0],
             ls='--',
             c='#006400')
@@ -707,7 +783,7 @@ def plot_glm_one_way_fit(bin_fit_stats,
     if return_fig:
         return fig
     else:
-        plt.show()
+        _plt.show()
 
 ### END: One way GLM Plots ###
 
@@ -750,7 +826,7 @@ def plot_one_way_fit(feature,
     return_fig: (False)
         bool: return a fig instead of showing plt
     """
-    plt.rcParams['figure.figsize'] = plt_size
+    _plt.rcParams['figure.figsize'] = plt_size
 
     def format_describe(data):
         temp = data.groupby(data.columns[0]).describe()
@@ -762,20 +838,20 @@ def plot_one_way_fit(feature,
     if objective == 'median':
         objective = '50%'
 
-    temp = pd.concat([feature, perdiction], axis=1)
+    temp = _pd.concat([feature, perdiction], axis=1)
     temp.columns = ['feature', 'prediction']
     temp = format_describe(temp)
 
     if target is not None:
-        temp_2 = pd.concat([feature, target], axis=1)
+        temp_2 = _pd.concat([feature, target], axis=1)
         temp_2.columns = ['feature', 'target']
         temp_2 = format_describe(temp_2)
-        temp = pd.concat([temp, temp_2], axis=1)
+        temp = _pd.concat([temp, temp_2], axis=1)
 
-    fig, ax = plt.subplots()
+    fig, ax = _plt.subplots()
     ax2 = ax.twinx()
 
-    if np.issubdtype(temp.index.dtype, np.number):
+    if _np.issubdtype(temp.index.dtype, _np.number):
         index = [str(round(x, 2)) for x in temp.index]
     else:
         index = temp.index
@@ -834,7 +910,7 @@ def plot_one_way_fit(feature,
                 label='Target Error')
 
     if rotate_x:
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
+        _plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
 
     if pad_bar_chart:
         ax.set_ylim([0, temp['prediction_count'].max() * 2])
@@ -844,4 +920,4 @@ def plot_one_way_fit(feature,
     if return_fig:
         return fig
     else:
-        plt.show()
+        _plt.show()
