@@ -143,7 +143,11 @@ class Imputer(SimpleImputer):
     
     
 class FunctionTransformer(TransformerMixin):
-    """Transforms based on function passed in."""
+    """
+    Transforms based on function passed in.
+    Warning: columns names may not capture all function changes before 
+    a transform is performed on a pipeline.
+    """
     def __init__(self, func):
 #         def copy_func(f):
 #             """Based on http://stackoverflow.com/a/6528148/190597 (Glenn Maynard)"""
@@ -161,13 +165,16 @@ class FunctionTransformer(TransformerMixin):
         self.feature_names = []
         
     def get_feature_names(self):
-        pass
+        return self.feature_names
     
     def fit(self, X, y=None):
+        self.feature_names = X.columns
         return self
     
     def transform(self, X):
-        return self.func(X)
+        X = self.func(X)
+        self.feature_names = X.columns
+        return X
     
 class LabelEncoder(TransformerMixin):
     """Similar to pandas get_dummies with pandas dataframe output
