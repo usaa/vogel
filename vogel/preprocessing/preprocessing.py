@@ -235,7 +235,7 @@ class LabelEncoder(TransformerMixin):
             val_cnts = pd.DataFrame(val_cnts).reset_index().sort_values([col, 'index'], ascending=[False, True])
             base = val_cnts['index'].iloc[0]
             val_cnts = val_cnts.set_index('index')[col].iloc[1:]
-            del val_cnts.index.name
+
         return val_cnts, base
     
     def _formater(self, col, cat):
